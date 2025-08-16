@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offline Study Tracker</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #1e1e1e;
+        color: #fff;
+        margin: 0;
+        padding: 20px;
+    }
+    h1 {
+        text-align: center;
+    }
+    #add-subject {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    #add-subject input, #add-subject button {
+        padding: 10px;
+        margin: 5px;
+        border-radius: 5px;
+        border: none;
+    }
+    #add-subject button {
+        background: #ff9800;
+        color: #fff;
+        cursor: pointer;
+    }
+    .subject {
+        background: #2a2a2a;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        padding: 15px;
+        position: relative;
+    }
+    .delete-subject {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: red;
+        border: none;
+        border-radius: 5px;
+        color: #fff;
+        cursor: pointer;
+        padding: 5px 8px;
+    }
+    .subject-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+    }
+    .circular-progress {
+        position: relative;
+        width: 50px;
+        height: 50px;
+    }
+    .circular-progress svg {
+        transform: rotate(-90deg);
+        width: 50px;
+        height: 50px;
+    }
+    .circular-progress circle {
+        fill: none;
+        stroke-width: 6;
+        stroke-linecap: round;
+    }
+    .circular-progress .bg {
+        stroke: #444;
+    }
+    .circular-progress .progress {
+        stroke: #ff9800;
+        stroke-dasharray: 157; /* 2πr, r=25-3=22 */
+        stroke-dashoffset: 157;
+        transition: stroke-dashoffset 0.3s;
+    }
+    .circular-progress span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 14px;
+    }
+    .topics {
+        margin-top: 10px;
+        display: none;
+    }
+    .topic {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+        background: #333;
+        padding: 5px;
+        border-radius: 5px;
+        align-items: center;
+    }
+    .topic button {
+        background: #ff9800;
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        cursor: pointer;
+        margin-left: 5px;
+    }
+    .topic .delete-topic {
+        background: red;
+        border-radius: 5px;
+        width: auto;
+        height: auto;
+        padding: 2px 5px;
+    }
+    .add-topic {
+        display: flex;
+        margin-top: 10px;
+    }
+    .add-topic input, .add-topic button {
+        padding: 5px;
+        margin-right: 5px;
+        border-radius: 5px;
+        border: none;
+    }
+    .add-topic button {
+        background: #ff9800;
+        color: #fff;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<h1>Offline Study Tracker</h1>
+
+<div id="add-subject">
+    <input type="text" id="subject-name" placeholder="New Subject Name">
+    <button id="add-subject-btn">Add Subject</button>
+</div>
+
+<div id="subjects-container"></div>
+
+<script>
+const subjectsContainer = document.getElementById('subjects-container');
+const addSubjectBtn = document.getElementById('add-subject-btn');
+const subjectNameInput = document.getElementById('subject-name');
+
+let subjectsData = JSON.parse(localStorage.getItem('subjectsData')) || [];
+
+function saveData() {
+    localStorage.setItem('subjectsData', JSON.stringify(subjectsData));
+}
+
+function createSubject(subject, index) {
+    const div = document.createElement('div');
+    div.className = 'subject';
+    div.dataset.subject = subject.name;
+
+    div.innerHTML = `
+        <button class="delete-subject">Delete Subject</button>
+        <div class="subject-header">
+            <span>${subject.name}</span>
+            <div class="circular-progress">
+                <svg>
+                    <circle class="bg" cx="25" cy="25" r="25"></circle>
+                    <circle class="progress" cx="25" cy="25" r="25"></circle>
+                </svg>
+                <span>${subject.progress}%</span>
+            </div>
+        </div>
+        <div class="topics"></div>
+        <div class="add-topic">
+            <input type="text" placeholder="New Topic Name">
+            <button>Add Topic</button>
+        </div>
+    `;
+
+    const header = div.querySelector('.subject-header');
+    const topicsDiv = div.querySelector('.topics');
+    const addTopicInput = div.querySelector('.add-topic input');
+    const addTopicBtn = div.querySelector('.add-topic button');
+    const deleteSubjectBtn = div.querySelector('.delete-subject');
+    const progressCircle = div.querySelector('.progress');
+    const progressText = div.querySelector('.circular-progress span');
+
+    // Toggle topics visibility
+    header.addEventListener('click', () => {
+        topicsDiv.style.display = topicsDiv.style.display === 'block' ? 'none' : 'block';
+    });
+
+    function addTopicElement(name, topicIndex) {
+        const topicDiv = document.createElement('div');
+        topicDiv.className = 'topic';
+        topicDiv.dataset.completed = subject.completed[topicIndex] ? "1" : "0";
+        topicDiv.innerHTML = `${name} <div>
+            <button>▶</button>
+            <button class="delete-topic">x</button>
+        </div>`;
+        
+        const toggleBtn = topicDiv.querySelector('button');
+        const deleteBtn = topicDiv.querySelector('.delete-topic');
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            topicDiv.dataset.completed = topicDiv.dataset.completed === "0" ? "1" : "0";
+            subject.completed[topicIndex] = topicDiv.dataset.completed === "1";
+            updateProgress(subject);
+            saveData();
+        });
+
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            subject.topics.splice(topicIndex, 1);
+            subject.completed.splice(topicIndex, 1);
+            topicsDiv.removeChild(topicDiv);
+            updateProgress(subject);
+            saveData();
+        });
+
+        topicsDiv.appendChild(topicDiv);
+    }
+
+    subject.topics.forEach((t, i) => addTopicElement(t, i));
+
+    // Add new topic
+    addTopicBtn.addEventListener('click', () => {
+        const topicName = addTopicInput.value.trim();
+        if(!topicName) return alert('Enter a topic name');
+        subject.topics.push(topicName);
+        subject.completed.push(false);
+        addTopicElement(topicName, subject.topics.length - 1);
+        addTopicInput.value = '';
+        updateProgress(subject);
+        saveData();
+    });
+
+    // Delete subject
+    deleteSubjectBtn.addEventListener('click', () => {
+        if(!confirm('Delete this subject?')) return;
+        subjectsData.splice(index, 1);
+        subjectsContainer.removeChild(div);
+        saveData();
+    });
+
+    subjectsContainer.appendChild(div);
+
+    function updateProgress(subject) {
+        const completedCount = subject.completed.filter(c => c).length;
+        const percent = subject.topics.length ? Math.round((completedCount / subject.topics.length) * 100) : 0;
+        progressText.textContent = percent + '%';
+        const circumference = 2 * Math.PI * 25; // r=25
+        const offset = circumference - (circumference * percent / 100);
+        progressCircle.style.strokeDasharray = circumference;
+        progressCircle.style.strokeDashoffset = offset;
+        subject.progress = percent;
+    }
+
+    updateProgress(subject);
+}
+
+// Render all subjects
+subjectsData.forEach((subj, i) => createSubject(subj, i));
+
+// Add new subject
+addSubjectBtn.addEventListener('click', () => {
+    const name = subjectNameInput.value.trim();
+    if(!name) return alert('Enter a subject name');
+    const newSubject = {
+        name: name,
+        topics: ["New Topic 1", "New Topic 2"],
+        completed: [false, false],
+        progress: 0
+    };
+    subjectsData.push(newSubject);
+    createSubject(newSubject, subjectsData.length - 1);
+    saveData();
+    subjectNameInput.value = '';
+});
+</script>
+
+</body>
+</html>
