@@ -12,42 +12,35 @@
         margin: 0;
         padding: 20px;
     }
-    h1 {
-        text-align: center;
-    }
-    #add-subject {
-        display: flex;
-        justify-content: center;
+    h1 { text-align: center; }
+    #timer { text-align: center; font-size: 18px; margin-bottom: 20px; }
+
+    /* Overall Progress */
+    .overall {
+        background: #2a2a2a;
         margin-bottom: 20px;
+        border-radius: 8px;
+        padding: 15px;
     }
-    #add-subject input, #add-subject button {
-        padding: 10px;
-        margin: 5px;
+    .overall .progress-bar {
+        background: #444;
         border-radius: 5px;
-        border: none;
+        height: 15px;
+        margin-top: 10px;
+        overflow: hidden;
     }
-    #add-subject button {
-        background: #ff9800;
-        color: #fff;
-        cursor: pointer;
+    .overall .progress {
+        height: 15px;
+        background: #4caf50;
+        width: 0%;
     }
+
+    /* Subject */
     .subject {
         background: #2a2a2a;
         margin-bottom: 15px;
         border-radius: 8px;
         padding: 15px;
-        position: relative;
-    }
-    .delete-subject {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: red;
-        border: none;
-        border-radius: 5px;
-        color: #fff;
-        cursor: pointer;
-        padding: 5px 8px;
     }
     .subject-header {
         display: flex;
@@ -55,41 +48,19 @@
         align-items: center;
         cursor: pointer;
     }
-    .circular-progress {
-        position: relative;
-        width: 50px;
-        height: 50px;
-    }
-    .circular-progress svg {
-        transform: rotate(-90deg);
-        width: 50px;
-        height: 50px;
-    }
-    .circular-progress circle {
-        fill: none;
-        stroke-width: 6;
-        stroke-linecap: round;
-    }
-    .circular-progress .bg {
-        stroke: #444;
-    }
-    .circular-progress .progress {
-        stroke: #ff9800;
-        stroke-dasharray: 157; /* 2πr, r=25-3=22 */
-        stroke-dashoffset: 157;
-        transition: stroke-dashoffset 0.3s;
-    }
-    .circular-progress span {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 14px;
-    }
-    .topics {
+    .progress-bar {
+        background: #444;
+        border-radius: 5px;
+        height: 10px;
         margin-top: 10px;
-        display: none;
+        overflow: hidden;
     }
+    .progress {
+        height: 10px;
+        background: #ff9800;
+        width: 0%;
+    }
+    .topics { margin-top: 10px; display: none; }
     .topic {
         display: flex;
         justify-content: space-between;
@@ -97,7 +68,6 @@
         background: #333;
         padding: 5px;
         border-radius: 5px;
-        align-items: center;
     }
     .topic button {
         background: #ff9800;
@@ -106,179 +76,131 @@
         width: 25px;
         height: 25px;
         cursor: pointer;
-        margin-left: 5px;
-    }
-    .topic .delete-topic {
-        background: red;
-        border-radius: 5px;
-        width: auto;
-        height: auto;
-        padding: 2px 5px;
-    }
-    .add-topic {
-        display: flex;
-        margin-top: 10px;
-    }
-    .add-topic input, .add-topic button {
-        padding: 5px;
-        margin-right: 5px;
-        border-radius: 5px;
-        border: none;
-    }
-    .add-topic button {
-        background: #ff9800;
-        color: #fff;
-        cursor: pointer;
     }
 </style>
 </head>
 <body>
 
 <h1>Offline Study Tracker</h1>
+<div id="timer">Loading countdown...</div>
 
-<div id="add-subject">
-    <input type="text" id="subject-name" placeholder="New Subject Name">
-    <button id="add-subject-btn">Add Subject</button>
+<!-- Overall Progress -->
+<div class="overall">
+    <div class="overall-header">
+        <span>Overall Progress</span>
+        <span class="overall-progress-text">0%</span>
+    </div>
+    <div class="progress-bar">
+        <div class="progress"></div>
+    </div>
 </div>
 
-<div id="subjects-container"></div>
+<!-- Subjects -->
+<div class="subject" data-subject="Physics">
+    <div class="subject-header">
+        <span>Physics</span>
+        <span class="progress-text">0%</span>
+    </div>
+    <div class="progress-bar">
+        <div class="progress"></div>
+    </div>
+    <div class="topics">
+        <div class="topic" data-completed="0">Physics and Measurement <button>▶</button></div>
+        <div class="topic" data-completed="0">Kinematics <button>▶</button></div>
+        <div class="topic" data-completed="0">Laws of Motion <button>▶</button></div>
+        <div class="topic" data-completed="0">Work, Energy, and Power <button>▶</button></div>
+    </div>
+</div>
+
+<div class="subject" data-subject="Mathematics">
+    <div class="subject-header">
+        <span>Mathematics</span>
+        <span class="progress-text">0%</span>
+    </div>
+    <div class="progress-bar">
+        <div class="progress"></div>
+    </div>
+    <div class="topics">
+        <div class="topic" data-completed="0">Algebra <button>▶</button></div>
+        <div class="topic" data-completed="0">Calculus <button>▶</button></div>
+    </div>
+</div>
 
 <script>
-const subjectsContainer = document.getElementById('subjects-container');
-const addSubjectBtn = document.getElementById('add-subject-btn');
-const subjectNameInput = document.getElementById('subject-name');
+    const subjects = document.querySelectorAll('.subject');
+    const overallProgressBar = document.querySelector('.overall .progress');
+    const overallProgressText = document.querySelector('.overall-progress-text');
 
-let subjectsData = JSON.parse(localStorage.getItem('subjectsData')) || [];
+    subjects.forEach(subject => {
+        const header = subject.querySelector('.subject-header');
+        const topicsDiv = subject.querySelector('.topics');
+        const progressBar = subject.querySelector('.progress');
+        const progressText = subject.querySelector('.progress-text');
 
-function saveData() {
-    localStorage.setItem('subjectsData', JSON.stringify(subjectsData));
-}
-
-function createSubject(subject, index) {
-    const div = document.createElement('div');
-    div.className = 'subject';
-    div.dataset.subject = subject.name;
-
-    div.innerHTML = `
-        <button class="delete-subject">Delete Subject</button>
-        <div class="subject-header">
-            <span>${subject.name}</span>
-            <div class="circular-progress">
-                <svg>
-                    <circle class="bg" cx="25" cy="25" r="25"></circle>
-                    <circle class="progress" cx="25" cy="25" r="25"></circle>
-                </svg>
-                <span>${subject.progress}%</span>
-            </div>
-        </div>
-        <div class="topics"></div>
-        <div class="add-topic">
-            <input type="text" placeholder="New Topic Name">
-            <button>Add Topic</button>
-        </div>
-    `;
-
-    const header = div.querySelector('.subject-header');
-    const topicsDiv = div.querySelector('.topics');
-    const addTopicInput = div.querySelector('.add-topic input');
-    const addTopicBtn = div.querySelector('.add-topic button');
-    const deleteSubjectBtn = div.querySelector('.delete-subject');
-    const progressCircle = div.querySelector('.progress');
-    const progressText = div.querySelector('.circular-progress span');
-
-    // Toggle topics visibility
-    header.addEventListener('click', () => {
-        topicsDiv.style.display = topicsDiv.style.display === 'block' ? 'none' : 'block';
-    });
-
-    function addTopicElement(name, topicIndex) {
-        const topicDiv = document.createElement('div');
-        topicDiv.className = 'topic';
-        topicDiv.dataset.completed = subject.completed[topicIndex] ? "1" : "0";
-        topicDiv.innerHTML = `${name} <div>
-            <button>▶</button>
-            <button class="delete-topic">x</button>
-        </div>`;
-        
-        const toggleBtn = topicDiv.querySelector('button');
-        const deleteBtn = topicDiv.querySelector('.delete-topic');
-
-        toggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            topicDiv.dataset.completed = topicDiv.dataset.completed === "0" ? "1" : "0";
-            subject.completed[topicIndex] = topicDiv.dataset.completed === "1";
-            updateProgress(subject);
-            saveData();
+        // Expand/collapse topics
+        header.addEventListener('click', () => {
+            topicsDiv.style.display = topicsDiv.style.display === 'block' ? 'none' : 'block';
         });
 
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            subject.topics.splice(topicIndex, 1);
-            subject.completed.splice(topicIndex, 1);
-            topicsDiv.removeChild(topicDiv);
-            updateProgress(subject);
-            saveData();
+        // Handle topic completion
+        const topics = subject.querySelectorAll('.topic');
+        topics.forEach(topic => {
+            const btn = topic.querySelector('button');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                topic.dataset.completed = topic.dataset.completed === "0" ? "1" : "0";
+                updateProgress(subject);
+                updateOverallProgress();
+            });
         });
 
-        topicsDiv.appendChild(topicDiv);
-    }
-
-    subject.topics.forEach((t, i) => addTopicElement(t, i));
-
-    // Add new topic
-    addTopicBtn.addEventListener('click', () => {
-        const topicName = addTopicInput.value.trim();
-        if(!topicName) return alert('Enter a topic name');
-        subject.topics.push(topicName);
-        subject.completed.push(false);
-        addTopicElement(topicName, subject.topics.length - 1);
-        addTopicInput.value = '';
-        updateProgress(subject);
-        saveData();
+        function updateProgress(subject) {
+            const topics = subject.querySelectorAll('.topic');
+            let completed = 0;
+            topics.forEach(t => { if(t.dataset.completed === "1") completed++; });
+            const percent = Math.round((completed / topics.length) * 100);
+            progressBar.style.width = percent + "%";
+            progressText.textContent = percent + "%";
+        }
     });
 
-    // Delete subject
-    deleteSubjectBtn.addEventListener('click', () => {
-        if(!confirm('Delete this subject?')) return;
-        subjectsData.splice(index, 1);
-        subjectsContainer.removeChild(div);
-        saveData();
-    });
-
-    subjectsContainer.appendChild(div);
-
-    function updateProgress(subject) {
-        const completedCount = subject.completed.filter(c => c).length;
-        const percent = subject.topics.length ? Math.round((completedCount / subject.topics.length) * 100) : 0;
-        progressText.textContent = percent + '%';
-        const circumference = 2 * Math.PI * 25; // r=25
-        const offset = circumference - (circumference * percent / 100);
-        progressCircle.style.strokeDasharray = circumference;
-        progressCircle.style.strokeDashoffset = offset;
-        subject.progress = percent;
+    // Update overall progress
+    function updateOverallProgress() {
+        let total = 0, count = 0;
+        subjects.forEach(subject => {
+            const text = subject.querySelector('.progress-text').textContent.replace('%','');
+            total += parseInt(text);
+            count++;
+        });
+        const avg = Math.round(total / count);
+        overallProgressBar.style.width = avg + "%";
+        overallProgressText.textContent = avg + "%";
     }
 
-    updateProgress(subject);
-}
+    // Countdown Timer (3 months)
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 3);
 
-// Render all subjects
-subjectsData.forEach((subj, i) => createSubject(subj, i));
+    function updateTimer() {
+        const now = new Date().getTime();
+        const distance = endDate.getTime() - now;
 
-// Add new subject
-addSubjectBtn.addEventListener('click', () => {
-    const name = subjectNameInput.value.trim();
-    if(!name) return alert('Enter a subject name');
-    const newSubject = {
-        name: name,
-        topics: ["New Topic 1", "New Topic 2"],
-        completed: [false, false],
-        progress: 0
-    };
-    subjectsData.push(newSubject);
-    createSubject(newSubject, subjectsData.length - 1);
-    saveData();
-    subjectNameInput.value = '';
-});
+        if (distance <= 0) {
+            document.getElementById("timer").innerHTML = "Time's up!";
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById("timer").innerHTML =
+            `${days}d ${hours}h ${minutes}m ${seconds}s left`;
+    }
+
+    setInterval(updateTimer, 1000);
+    updateTimer();
 </script>
 
 </body>
